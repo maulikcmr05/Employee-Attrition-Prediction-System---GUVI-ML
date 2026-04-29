@@ -5,19 +5,13 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 
-# -------------------------------
 # TITLE
-# -------------------------------
 st.title("💼 Employee Attrition Prediction Dashboard")
 
-# -------------------------------
 # LOAD DATA
-# -------------------------------
 df = pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
 
-# -------------------------------
 # DATASET VIEWER
-# -------------------------------
 st.subheader("Dataset Viewer")
 
 if st.checkbox("Show Full Dataset"):
@@ -25,9 +19,7 @@ if st.checkbox("Show Full Dataset"):
 else:
     st.dataframe(df.head())
 
-# -------------------------------
 # SEARCH
-# -------------------------------
 st.subheader("Search Employee Data")
 
 col_name = st.selectbox("Select Column", df.columns)
@@ -37,9 +29,7 @@ if search_value:
     filtered_df = df[df[col_name].astype(str).str.contains(search_value, case=False)]
     st.dataframe(filtered_df)
 
-# -------------------------------
 # AUTO FILL
-# -------------------------------
 st.subheader("Auto Fill from Dataset")
 
 row_number = st.number_input("Select Row Number", 0, len(df)-1, 0)
@@ -65,9 +55,7 @@ if st.button("Load Data"):
         "YearsAtCompany": int(row['YearsAtCompany'])
     }
 
-# -------------------------------
 # GRAPH
-# -------------------------------
 st.subheader("Attrition Count")
 
 attrition = df['Attrition'].value_counts()
@@ -78,9 +66,7 @@ ax.set_title("Employee Attrition Count")
 
 st.pyplot(fig)
 
-# -------------------------------
 # PREPROCESSING
-# -------------------------------
 df_model = df.copy()
 
 encoders = {}
@@ -92,15 +78,11 @@ for col in df_model.select_dtypes(include='object').columns:
 X = df_model.drop("Attrition", axis=1)
 y = df_model["Attrition"]
 
-# -------------------------------
-# MODEL (UPDATED 🔥)
-# -------------------------------
+# MODEL
 model = RandomForestClassifier(n_estimators=200, random_state=42)
 model.fit(X, y)
 
-# -------------------------------
 # SIDEBAR INPUT
-# -------------------------------
 st.sidebar.title("Employee Details")
 
 inputs = st.session_state.inputs
@@ -121,9 +103,7 @@ st.session_state.inputs = {
     "YearsAtCompany": years
 }
 
-# -------------------------------
 # PREDICTION
-# -------------------------------
 st.subheader("Prediction")
 
 if st.button("Predict Attrition"):
@@ -161,9 +141,7 @@ if st.button("Predict Attrition"):
 
     st.write("Risk Level:", risk)
 
-# -------------------------------
-# ACCURACY (BONUS 🔥)
-# -------------------------------
+# ACCURACY
 from sklearn.metrics import accuracy_score
 
 y_pred = model.predict(X)
@@ -171,8 +149,6 @@ acc = accuracy_score(y, y_pred)
 
 st.write(f"Model Accuracy: {round(acc,2)}")
 
-# -------------------------------
 # FOOTER
-# -------------------------------
 st.markdown("---")
 st.write("Developed by Maulik 🚀")
