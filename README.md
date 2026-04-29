@@ -17,7 +17,7 @@ This project predicts whether an employee will leave the company using Machine L
 - Matplotlib
 
 ## ▶️ Live Demo
-https://your-app-link.streamlit.app
+[https://your-app-link.streamlit.app](https://employee-attrition-prediction-system---guvi-ml-dbep9gsls7tpvis.streamlit.app/)
 
 ## 📊 Dataset
 IBM HR Analytics Dataset
