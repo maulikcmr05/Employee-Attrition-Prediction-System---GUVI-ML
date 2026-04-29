@@ -1,4 +1,3 @@
-# Employee Attrition Project 
 # Employee Attrition Prediction System
 
 ## 📌 Project Overview
