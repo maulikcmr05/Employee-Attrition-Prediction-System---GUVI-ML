@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression
+import numpy as np
 
 # -------------------------------
 # TITLE
@@ -19,15 +20,13 @@ df = pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
 # -------------------------------
 st.subheader("Dataset Viewer")
 
-show_full = st.checkbox("Show Full Dataset")
-
-if show_full:
+if st.checkbox("Show Full Dataset"):
     st.dataframe(df)
 else:
     st.dataframe(df.head())
 
 # -------------------------------
-# SEARCH FEATURE
+# SEARCH
 # -------------------------------
 st.subheader("Search Employee Data")
 
@@ -36,34 +35,36 @@ search_value = st.text_input("Enter value to search")
 
 if search_value:
     filtered_df = df[df[col_name].astype(str).str.contains(search_value, case=False)]
-    st.write("Filtered Data:")
     st.dataframe(filtered_df)
 
 # -------------------------------
-# AUTO-FILL FROM DATASET 🔥
+# AUTO FILL
 # -------------------------------
 st.subheader("Auto Fill from Dataset")
 
 row_number = st.number_input("Select Row Number", 0, len(df)-1, 0)
 
 # Session state init
-if "age" not in st.session_state:
-    st.session_state.age = 30
-    st.session_state.daily_rate = 500
-    st.session_state.distance = 5
-    st.session_state.job_level = 2
-    st.session_state.monthly_income = 5000
-    st.session_state.years = 5
+if "inputs" not in st.session_state:
+    st.session_state.inputs = {
+        "Age": 30,
+        "DailyRate": 500,
+        "DistanceFromHome": 5,
+        "JobLevel": 2,
+        "MonthlyIncome": 5000,
+        "YearsAtCompany": 5
+    }
 
 if st.button("Load Data"):
     row = df.iloc[row_number]
-
-    st.session_state.age = int(row['Age'])
-    st.session_state.daily_rate = int(row['DailyRate'])
-    st.session_state.distance = int(row['DistanceFromHome'])
-    st.session_state.job_level = int(row['JobLevel'])
-    st.session_state.monthly_income = int(row['MonthlyIncome'])
-    st.session_state.years = int(row['YearsAtCompany'])
+    st.session_state.inputs = {
+        "Age": int(row['Age']),
+        "DailyRate": int(row['DailyRate']),
+        "DistanceFromHome": int(row['DistanceFromHome']),
+        "JobLevel": int(row['JobLevel']),
+        "MonthlyIncome": int(row['MonthlyIncome']),
+        "YearsAtCompany": int(row['YearsAtCompany'])
+    }
 
 # -------------------------------
 # GRAPH
@@ -75,19 +76,19 @@ attrition = df['Attrition'].value_counts()
 fig, ax = plt.subplots()
 ax.bar(attrition.index, attrition.values)
 ax.set_title("Employee Attrition Count")
-ax.set_xlabel("Attrition")
-ax.set_ylabel("Count")
 
 st.pyplot(fig)
 
 # -------------------------------
-# DATA PREPROCESSING
+# PREPROCESSING (FIXED 🔥)
 # -------------------------------
 df_model = df.copy()
 
-le = LabelEncoder()
+encoders = {}
 for col in df_model.select_dtypes(include='object').columns:
+    le = LabelEncoder()
     df_model[col] = le.fit_transform(df_model[col])
+    encoders[col] = le
 
 X = df_model.drop("Attrition", axis=1)
 y = df_model["Attrition"]
@@ -96,24 +97,28 @@ model = LogisticRegression(max_iter=1000)
 model.fit(X, y)
 
 # -------------------------------
-# SIDEBAR INPUT (AUTO FILLED 🔥)
+# SIDEBAR INPUT
 # -------------------------------
 st.sidebar.title("Employee Details")
 
-age = st.sidebar.slider("Age", 18, 60, st.session_state.age)
-daily_rate = st.sidebar.slider("Daily Rate", 100, 1500, st.session_state.daily_rate)
-distance = st.sidebar.slider("Distance From Home", 1, 30, st.session_state.distance)
-job_level = st.sidebar.slider("Job Level", 1, 5, st.session_state.job_level)
-monthly_income = st.sidebar.slider("Monthly Income", 1000, 20000, st.session_state.monthly_income)
-years_at_company = st.sidebar.slider("Years At Company", 0, 40, st.session_state.years)
+inputs = st.session_state.inputs
 
-# Update session
-st.session_state.age = age
-st.session_state.daily_rate = daily_rate
-st.session_state.distance = distance
-st.session_state.job_level = job_level
-st.session_state.monthly_income = monthly_income
-st.session_state.years = years_at_company
+age = st.sidebar.slider("Age", 18, 60, inputs["Age"])
+daily_rate = st.sidebar.slider("Daily Rate", 100, 1500, inputs["DailyRate"])
+distance = st.sidebar.slider("Distance From Home", 1, 30, inputs["DistanceFromHome"])
+job_level = st.sidebar.slider("Job Level", 1, 5, inputs["JobLevel"])
+monthly_income = st.sidebar.slider("Monthly Income", 1000, 20000, inputs["MonthlyIncome"])
+years = st.sidebar.slider("Years At Company", 0, 40, inputs["YearsAtCompany"])
+
+# update session
+st.session_state.inputs = {
+    "Age": age,
+    "DailyRate": daily_rate,
+    "DistanceFromHome": distance,
+    "JobLevel": job_level,
+    "MonthlyIncome": monthly_income,
+    "YearsAtCompany": years
+}
 
 # -------------------------------
 # PREDICTION
@@ -121,28 +126,30 @@ st.session_state.years = years_at_company
 st.subheader("Prediction")
 
 if st.button("Predict Attrition"):
-    input_data = pd.DataFrame({
-        'Age': [age],
-        'DailyRate': [daily_rate],
-        'DistanceFromHome': [distance],
-        'JobLevel': [job_level],
-        'MonthlyIncome': [monthly_income],
-        'YearsAtCompany': [years_at_company]
-    })
 
-    # Fill missing columns
+    input_data = pd.DataFrame([st.session_state.inputs])
+
+    # Add missing columns
     for col in X.columns:
         if col not in input_data.columns:
             input_data[col] = 0
 
     input_data = input_data[X.columns]
 
-    prediction = model.predict(input_data)
+    prediction = model.predict(input_data)[0]
+    prob = model.predict_proba(input_data)[0][1]
 
-    if prediction[0] == 1:
-        st.error("⚠️ Employee is likely to leave")
+    # Actual value
+    actual = df.iloc[row_number]['Attrition']
+
+    st.write(f"📊 Actual (Dataset): {actual}")
+
+    if prediction == 1:
+        st.error("⚠️ Predicted: Employee will leave")
     else:
-        st.success("✅ Employee will stay")
+        st.success("✅ Predicted: Employee will stay")
+
+    st.info(f"Confidence: {round(prob,2)}")
 
 # -------------------------------
 # FOOTER
