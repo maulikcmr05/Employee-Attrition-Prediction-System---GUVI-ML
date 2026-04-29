@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 import numpy as np
 
 # -------------------------------
 # TITLE
 # -------------------------------
-st.title("Employee Attrition Prediction Dashboard")
+st.title("💼 Employee Attrition Prediction Dashboard")
 
 # -------------------------------
 # LOAD DATA
@@ -44,7 +44,6 @@ st.subheader("Auto Fill from Dataset")
 
 row_number = st.number_input("Select Row Number", 0, len(df)-1, 0)
 
-# Session state init
 if "inputs" not in st.session_state:
     st.session_state.inputs = {
         "Age": 30,
@@ -80,7 +79,7 @@ ax.set_title("Employee Attrition Count")
 st.pyplot(fig)
 
 # -------------------------------
-# PREPROCESSING (FIXED 🔥)
+# PREPROCESSING
 # -------------------------------
 df_model = df.copy()
 
@@ -93,7 +92,10 @@ for col in df_model.select_dtypes(include='object').columns:
 X = df_model.drop("Attrition", axis=1)
 y = df_model["Attrition"]
 
-model = LogisticRegression(max_iter=1000)
+# -------------------------------
+# MODEL (UPDATED 🔥)
+# -------------------------------
+model = RandomForestClassifier(n_estimators=200, random_state=42)
 model.fit(X, y)
 
 # -------------------------------
@@ -110,7 +112,6 @@ job_level = st.sidebar.slider("Job Level", 1, 5, inputs["JobLevel"])
 monthly_income = st.sidebar.slider("Monthly Income", 1000, 20000, inputs["MonthlyIncome"])
 years = st.sidebar.slider("Years At Company", 0, 40, inputs["YearsAtCompany"])
 
-# update session
 st.session_state.inputs = {
     "Age": age,
     "DailyRate": daily_rate,
@@ -129,7 +130,7 @@ if st.button("Predict Attrition"):
 
     input_data = pd.DataFrame([st.session_state.inputs])
 
-    # Add missing columns
+    # Fill missing columns
     for col in X.columns:
         if col not in input_data.columns:
             input_data[col] = 0
@@ -139,7 +140,6 @@ if st.button("Predict Attrition"):
     prediction = model.predict(input_data)[0]
     prob = model.predict_proba(input_data)[0][1]
 
-    # Actual value
     actual = df.iloc[row_number]['Attrition']
 
     st.write(f"📊 Actual (Dataset): {actual}")
@@ -150,6 +150,26 @@ if st.button("Predict Attrition"):
         st.success("✅ Predicted: Employee will stay")
 
     st.info(f"Confidence: {round(prob,2)}")
+
+    # ---------------- RISK LEVEL 🔥 ----------------
+    if prob < 0.3:
+        risk = "Low Risk 🟢"
+    elif prob < 0.6:
+        risk = "Medium Risk 🟡"
+    else:
+        risk = "High Risk 🔴"
+
+    st.write("Risk Level:", risk)
+
+# -------------------------------
+# ACCURACY (BONUS 🔥)
+# -------------------------------
+from sklearn.metrics import accuracy_score
+
+y_pred = model.predict(X)
+acc = accuracy_score(y, y_pred)
+
+st.write(f"Model Accuracy: {round(acc,2)}")
 
 # -------------------------------
 # FOOTER
