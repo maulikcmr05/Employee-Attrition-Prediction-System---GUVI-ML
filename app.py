@@ -5,7 +5,8 @@ import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import train_test_split
 
 # TITLE
 st.set_page_config(layout="wide")
@@ -58,48 +59,36 @@ if st.button("Load Data"):
         "YearsAtCompany": int(row['YearsAtCompany'])
     }
 
-# ---------------- 📊 DASHBOARD ----------------
+# ---------------- DASHBOARD ----------------
 st.subheader("📊 Dashboard Analysis")
 
 col1, col2 = st.columns(2)
 
-# GRAPH 1 - Attrition Count
 with col1:
     fig1, ax1 = plt.subplots()
     df['Attrition'].value_counts().plot(kind='bar', ax=ax1)
     ax1.set_title("Attrition Count")
     st.pyplot(fig1)
 
-# GRAPH 2 - Department vs Attrition
 with col2:
     fig2, ax2 = plt.subplots()
     sns.countplot(x='Department', hue='Attrition', data=df, ax=ax2)
     plt.xticks(rotation=45)
     st.pyplot(fig2)
 
-# GRAPH 3 & 4
 col3, col4 = st.columns(2)
 
 with col3:
     fig3, ax3 = plt.subplots()
     sns.histplot(df['Age'], bins=20, kde=True, ax=ax3)
-    ax3.set_title("Age Distribution")
     st.pyplot(fig3)
 
 with col4:
     fig4, ax4 = plt.subplots()
     sns.boxplot(x='Attrition', y='MonthlyIncome', data=df, ax=ax4)
-    ax4.set_title("Salary vs Attrition")
     st.pyplot(fig4)
 
-# GRAPH 5
-st.subheader("Job Role vs Attrition")
-fig5, ax5 = plt.subplots(figsize=(10,5))
-sns.countplot(x='JobRole', hue='Attrition', data=df, ax=ax5)
-plt.xticks(rotation=45)
-st.pyplot(fig5)
-
-# ---------------- 📌 METRICS ----------------
+# ---------------- METRICS ----------------
 st.subheader("📌 Key Metrics")
 
 total_emp = len(df)
@@ -121,9 +110,41 @@ for col in df_model.select_dtypes(include='object').columns:
 X = df_model.drop("Attrition", axis=1)
 y = df_model["Attrition"]
 
+# ---------------- TRAIN TEST SPLIT ----------------
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
 # ---------------- MODEL ----------------
 model = RandomForestClassifier(n_estimators=200, random_state=42)
-model.fit(X, y)
+model.fit(X_train, y_train)
+
+# ---------------- ACCURACY ----------------
+y_pred = model.predict(X_test)
+acc = accuracy_score(y_test, y_pred)
+
+st.subheader("📊 Model Performance")
+st.write(f"Accuracy: {round(acc,2)}")
+
+# ---------------- CONFUSION MATRIX ----------------
+st.subheader("Confusion Matrix")
+
+cm = confusion_matrix(y_test, y_pred)
+
+fig_cm, ax_cm = plt.subplots()
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax_cm)
+st.pyplot(fig_cm)
+
+# ---------------- FEATURE IMPORTANCE ----------------
+st.subheader("🔥 Feature Importance")
+
+importance = model.feature_importances_
+feat_df = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': importance
+}).sort_values(by='Importance', ascending=False).head(10)
+
+fig_imp, ax_imp = plt.subplots()
+sns.barplot(x='Importance', y='Feature', data=feat_df, ax=ax_imp)
+st.pyplot(fig_imp)
 
 # ---------------- SIDEBAR INPUT ----------------
 st.sidebar.title("Employee Details")
@@ -172,19 +193,12 @@ if st.button("Predict Attrition"):
 
     st.info(f"Confidence: {round(prob,2)}")
 
-    # Risk level
     if prob < 0.3:
         st.write("Risk Level: 🟢 Low")
     elif prob < 0.6:
         st.write("Risk Level: 🟡 Medium")
     else:
         st.write("Risk Level: 🔴 High")
-
-# ---------------- ACCURACY ----------------
-y_pred = model.predict(X)
-acc = accuracy_score(y, y_pred)
-
-st.write(f"Model Accuracy: {round(acc,2)}")
 
 # FOOTER
 st.markdown("---")
