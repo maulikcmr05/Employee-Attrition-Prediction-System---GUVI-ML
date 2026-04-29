@@ -1,17 +1,20 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 import numpy as np
+from sklearn.metrics import accuracy_score
 
 # TITLE
+st.set_page_config(layout="wide")
 st.title("💼 Employee Attrition Prediction Dashboard")
 
 # LOAD DATA
 df = pd.read_csv("WA_Fn-UseC_-HR-Employee-Attrition.csv")
 
-# DATASET VIEWER
+# ---------------- DATASET VIEW ----------------
 st.subheader("Dataset Viewer")
 
 if st.checkbox("Show Full Dataset"):
@@ -19,7 +22,7 @@ if st.checkbox("Show Full Dataset"):
 else:
     st.dataframe(df.head())
 
-# SEARCH
+# ---------------- SEARCH ----------------
 st.subheader("Search Employee Data")
 
 col_name = st.selectbox("Select Column", df.columns)
@@ -29,7 +32,7 @@ if search_value:
     filtered_df = df[df[col_name].astype(str).str.contains(search_value, case=False)]
     st.dataframe(filtered_df)
 
-# AUTO FILL
+# ---------------- AUTO FILL ----------------
 st.subheader("Auto Fill from Dataset")
 
 row_number = st.number_input("Select Row Number", 0, len(df)-1, 0)
@@ -55,18 +58,58 @@ if st.button("Load Data"):
         "YearsAtCompany": int(row['YearsAtCompany'])
     }
 
-# GRAPH
-st.subheader("Attrition Count")
+# ---------------- 📊 DASHBOARD ----------------
+st.subheader("📊 Dashboard Analysis")
 
-attrition = df['Attrition'].value_counts()
+col1, col2 = st.columns(2)
 
-fig, ax = plt.subplots()
-ax.bar(attrition.index, attrition.values)
-ax.set_title("Employee Attrition Count")
+# GRAPH 1 - Attrition Count
+with col1:
+    fig1, ax1 = plt.subplots()
+    df['Attrition'].value_counts().plot(kind='bar', ax=ax1)
+    ax1.set_title("Attrition Count")
+    st.pyplot(fig1)
 
-st.pyplot(fig)
+# GRAPH 2 - Department vs Attrition
+with col2:
+    fig2, ax2 = plt.subplots()
+    sns.countplot(x='Department', hue='Attrition', data=df, ax=ax2)
+    plt.xticks(rotation=45)
+    st.pyplot(fig2)
 
-# PREPROCESSING
+# GRAPH 3 & 4
+col3, col4 = st.columns(2)
+
+with col3:
+    fig3, ax3 = plt.subplots()
+    sns.histplot(df['Age'], bins=20, kde=True, ax=ax3)
+    ax3.set_title("Age Distribution")
+    st.pyplot(fig3)
+
+with col4:
+    fig4, ax4 = plt.subplots()
+    sns.boxplot(x='Attrition', y='MonthlyIncome', data=df, ax=ax4)
+    ax4.set_title("Salary vs Attrition")
+    st.pyplot(fig4)
+
+# GRAPH 5
+st.subheader("Job Role vs Attrition")
+fig5, ax5 = plt.subplots(figsize=(10,5))
+sns.countplot(x='JobRole', hue='Attrition', data=df, ax=ax5)
+plt.xticks(rotation=45)
+st.pyplot(fig5)
+
+# ---------------- 📌 METRICS ----------------
+st.subheader("📌 Key Metrics")
+
+total_emp = len(df)
+attrition_rate = (df['Attrition'].value_counts(normalize=True)['Yes']) * 100
+
+colm1, colm2 = st.columns(2)
+colm1.metric("Total Employees", total_emp)
+colm2.metric("Attrition Rate (%)", round(attrition_rate, 2))
+
+# ---------------- PREPROCESSING ----------------
 df_model = df.copy()
 
 encoders = {}
@@ -78,11 +121,11 @@ for col in df_model.select_dtypes(include='object').columns:
 X = df_model.drop("Attrition", axis=1)
 y = df_model["Attrition"]
 
-# MODEL
+# ---------------- MODEL ----------------
 model = RandomForestClassifier(n_estimators=200, random_state=42)
 model.fit(X, y)
 
-# SIDEBAR INPUT
+# ---------------- SIDEBAR INPUT ----------------
 st.sidebar.title("Employee Details")
 
 inputs = st.session_state.inputs
@@ -103,14 +146,13 @@ st.session_state.inputs = {
     "YearsAtCompany": years
 }
 
-# PREDICTION
-st.subheader("Prediction")
+# ---------------- PREDICTION ----------------
+st.subheader("🤖 Prediction")
 
 if st.button("Predict Attrition"):
 
     input_data = pd.DataFrame([st.session_state.inputs])
 
-    # Fill missing columns
     for col in X.columns:
         if col not in input_data.columns:
             input_data[col] = 0
@@ -121,29 +163,24 @@ if st.button("Predict Attrition"):
     prob = model.predict_proba(input_data)[0][1]
 
     actual = df.iloc[row_number]['Attrition']
-
     st.write(f"📊 Actual (Dataset): {actual}")
 
     if prediction == 1:
-        st.error("⚠️ Predicted: Employee will leave")
+        st.error("⚠️ Employee will leave")
     else:
-        st.success("✅ Predicted: Employee will stay")
+        st.success("✅ Employee will stay")
 
     st.info(f"Confidence: {round(prob,2)}")
 
-    # ---------------- RISK LEVEL 🔥 ----------------
+    # Risk level
     if prob < 0.3:
-        risk = "Low Risk 🟢"
+        st.write("Risk Level: 🟢 Low")
     elif prob < 0.6:
-        risk = "Medium Risk 🟡"
+        st.write("Risk Level: 🟡 Medium")
     else:
-        risk = "High Risk 🔴"
+        st.write("Risk Level: 🔴 High")
 
-    st.write("Risk Level:", risk)
-
-# ACCURACY
-from sklearn.metrics import accuracy_score
-
+# ---------------- ACCURACY ----------------
 y_pred = model.predict(X)
 acc = accuracy_score(y, y_pred)
 
